@@ -13,6 +13,8 @@ class Sphere:
 		m.setSphereTotal(self.m,self.r) # (density,radius)
 	def geom(self,space):
 		return ode.GeomSphere(space,radius=self.r)
+	def area(self):
+		return math.pi*self.r**2
 class Box:
 	dx = 1
 	dy = 1
@@ -24,6 +26,8 @@ class Box:
 		m.setBoxTotal(self.m,self.dx,self.dy,self.dz)
 	def geom(self,space):
 		return ode.GeomBox(space,lengths=(self.dx,self.dy,self.dz))
+	def area(self):
+		return self.dx*self.dy
 
 class Quad(ode.Body):
 	nextid = 0
@@ -50,6 +54,7 @@ class Quad(ode.Body):
 		self.shape.mass(m)
 		self.setMass(m)
 		self.energy = 0.
+		self.area = self.shape.area()
 		self.aim = None
 		self.theta = None
 		self.omega = None
@@ -132,9 +137,12 @@ class Quad(ode.Body):
 		
 		self.addRelTorque(torque)
 		self.addRelForce(force)
+		
+		# ideal energy used
+		AIR_VEL = 2
 		self.energy += DT*abs(np.dot(torque,currAngVel))
 		self.energy += DT*abs(np.dot(force,currVel))
-		# this vastly undercounts energy use. Does not account for inefficiency and doesn't account for work against gravity
+		self.energy += DT*GRAV_CONSTANT*self.getMass().mass*AIR_VEL/2
 		
 	def render(self):
 		self.vis.pos = self.getPosition()
@@ -168,7 +176,7 @@ def near_callback((world,contactgroup),geom1,geom2):
 	contacts = ode.collide(geom1,geom2)
 	for contact in contacts:
 		contacts_count += 1
-		print contacts_count,'Contact between object',obj1.id,'and object',obj2.id
+		print 'Contact',contacts_count,'between object',obj1.id,'and object',obj2.id
 		contact.setBounce(.3)
 		contact.setMu(20)
 		joint = ode.ContactJoint(world,contactgroup,contact)
